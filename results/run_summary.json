@@ -1,0 +1,130 @@
+{
+  "documentation_date": "2026-09-22",
+  "source_directory": "/work/dldevel/momeni/datasets/IXI_skullstripped",
+  "reports": {
+    "checkpoint-100-1774637.json": {
+      "expected": 100,
+      "checked": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "complete": true,
+      "manifest_coverage_exact": true,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "checkpoint-200-1774641.json": {
+      "expected": 100,
+      "checked": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "complete": true,
+      "manifest_coverage_exact": true,
+      "range_start": 101,
+      "range_end": 200,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "checkpoint-300-1774642.json": {
+      "expected": 100,
+      "checked": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "complete": true,
+      "manifest_coverage_exact": true,
+      "range_start": 201,
+      "range_end": 300,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "checkpoint-400-1774643.json": {
+      "expected": 100,
+      "checked": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "complete": true,
+      "manifest_coverage_exact": true,
+      "range_start": 301,
+      "range_end": 400,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "checkpoint-500-1774650.json": {
+      "expected": 100,
+      "checked": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "complete": true,
+      "manifest_coverage_exact": true,
+      "range_start": 401,
+      "range_end": 500,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "run-1774628.json": {
+      "expected": 1,
+      "checked": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "complete": true,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "run-1774631.json": {
+      "expected": 577,
+      "checked": 577,
+      "succeeded": 577,
+      "failed": 0,
+      "complete": true,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "verification-1774636.json": {
+      "expected": 577,
+      "checked": 577,
+      "succeeded": 577,
+      "failed": 0,
+      "complete": true,
+      "manifest_coverage_exact": true,
+      "range_start": 1,
+      "range_end": 577,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    },
+    "verification-685002.json": {
+      "expected": 1,
+      "checked": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "complete": true,
+      "image_sha256": "d2e0c4f347402348650ca23e73458d1ccc4120b5d1f8ea34206a9b1c2704f826"
+    }
+  },
+  "outputs": {
+    "cropped_subjects": 576,
+    "input_volumes": 577,
+    "brain_niftis": 577,
+    "mask_niftis": 577,
+    "png_previews": 1154
+  },
+  "slurm_accounting": {
+    "1774628": {
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:00:15",
+      "allocated_cpus": 4,
+      "requested_memory": "32G"
+    },
+    "1774631": {
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "01:01:19",
+      "allocated_cpus": 4,
+      "requested_memory": "32G",
+      "gpus": 1
+    },
+    "1774636": {
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:00:55",
+      "allocated_cpus": 80,
+      "requested_memory": "16G"
+    }
+  },
+  "limitations": [
+    "Summary fields only; per-image results remain in the source reports.",
+    "Checks verify structural/content consistency, not anatomical correctness.",
+    "PNG panels use stored voxel axes without affine-based reorientation."
+  ]
+}
