@@ -3,6 +3,14 @@
 Completed on Goethe on 21 September 2026: **577 T1 volumes from 576 subjects**,
 producing 577 brain images, 577 masks, and 1,154 PNG previews.
 
+## Steps completed
+
+1. Created a FreeSurfer account and obtained the required license. The license
+   is stored privately on the cluster and is not included in this repository.
+2. Created an Apptainer container from the FreeSurfer SynthStrip GPU image.
+3. Ran FreeSurfer SynthStrip on the IXI T1 MRI data to remove the skull and
+   produce a brain image and binary brain mask for each input volume.
+
 ## Dataset
 
 The IXI dataset came from `/work/dldevel/galella/datasets/IXI` and was copied

@@ -1,5 +1,12 @@
 # Worklog
 
+The project followed three main steps:
+
+1. Created a FreeSurfer account and obtained the required license.
+2. Built an Apptainer container using the FreeSurfer SynthStrip GPU image.
+3. Ran SynthStrip on the IXI T1 MRI volumes to create skull-stripped brain
+   images and binary brain masks.
+
 ## Setup
 
 Used the existing dataset at `/work/dldevel/galella/datasets/IXI`, copied with
