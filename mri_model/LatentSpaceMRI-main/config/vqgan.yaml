@@ -1,0 +1,182 @@
+
+hydra:
+  run:
+    dir: logs/hydra/run_${job_id}_${run_id}
+
+lightning_logger:
+  _target_: lightning.pytorch.loggers.WandbLogger
+  project: Test
+  save_dir: logs/
+  log_model: False
+  id: run_${run_id}
+
+lightning_seed:
+  _target_: lightning.pytorch.seed_everything
+  seed: 1234
+  workers: True
+
+trainer:
+  _target_: lightning.pytorch.Trainer
+  max_epochs: 1
+  deterministic: False
+  num_nodes: 1
+  devices: 1
+  accelerator: auto
+  strategy: ddp_find_unused_parameters_true
+  accumulate_grad_batches: 1
+  precision: bf16-mixed
+  profiler: simple
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: valid_loss
+      min_delta: 1e-3
+      patience: 2000
+      mode: min
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      monitor: valid_loss
+      dirpath: logs/models
+      filename: best_model_${run_id}
+    - _target_: unimodal_ae.wandb.callbacks3D.LogReconstructedInputs
+      num_images: 8
+      num_epochs: 50
+      use_sigmoid: False
+    - _target_: unimodal_ae.wandb.callbacks3D.LogDatasetSplits
+      num_images: 8
+    - _target_: unimodal_ae.wandb.callbacks3D.LogDatasetInformation
+    - _target_: unimodal_ae.wandb.callbacks3D.LogMetrics
+      num_epochs: 50
+      metrics:
+        - _target_: unimodal_ae.metrics.FID
+        - _target_: unimodal_ae.metrics.SSIM
+          spatial_dims: 3
+        - _target_: unimodal_ae.metrics.MSSSIM
+          spatial_dims: 3
+          kernel_size: 10
+        - _target_: unimodal_ae.metrics.MMD
+        - _target_: unimodal_ae.metrics.MAE
+        - _target_: unimodal_ae.metrics.MSE
+        - _target_: unimodal_ae.metrics.PSNR
+          max_val: 1
+
+dataset:
+  seed: 1234
+  ratio: [0.9, 0.05, 0.05]
+  logdir: logs/data
+  data:
+    _target_: unimodal_ae.data.datasets.MRIDataset
+    _partial_: True
+    path: /home/galella/Documents/data/IXI/derivatives/datasets/anat/3D/T1.h5
+  transforms:
+    train:
+      _target_: monai.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+        - _target_: monai.transforms.RandAffine
+          rotate_range: 0.04
+          scale_range: 0.05 
+          translate_range: 2
+          prob: 0.1
+        - _target_: monai.transforms.RandAdjustContrast
+          gamma: [0.99, 1.01]
+          prob: 0.1
+        - _target_: monai.transforms.RandShiftIntensity
+          offsets: [0, 0.05]
+          prob: 0.1
+        - _target_: monai.transforms.RandGaussianNoise
+          mean: 0.0
+          std: 0.02
+          prob: 0.1
+        - _target_: monai.transforms.ThresholdIntensity
+          threshold: 1.0
+          above: False
+          cval: 1.0
+        - _target_: monai.transforms.ThresholdIntensity
+          threshold: 0.0
+          above: True
+          cval: 0.0           
+    valid:
+      _target_: monai.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+    test:
+      _target_: monai.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+      
+   
+datamodule:
+  _target_: unimodal_ae.data.datamodules.MRIDataModule
+  params:
+    train:
+      batch_size: 8
+      num_workers: 4
+      pin_memory: True
+      shuffle: True
+    valid:
+      batch_size: 8
+      num_workers: 4
+      pin_memory: True
+      shuffle: False
+    test:
+      batch_size: 8
+      num_workers: 4
+      pin_memory: True
+      shuffle: False
+
+model:
+  _target_: unimodal_ae.models.vqgan.VQGAN
+  weights:
+    adv_weight: 0.005
+    perceptual_weight: 0.002
+    recon_weight: 1
+  params:
+    autoencoder:
+    - spatial_dims: 3
+    - in_channels: 1
+    - out_channels: 1
+    - downsample_parameters: [[2, 4, 1, 1], [2, 4, 1, 1], [2, 4, 1, 1], [2, 4, 1, 1]]
+    - upsample_parameters: [[2, 4, 1, 1, 0], [2, 4, 1, 1, 0], [2, 4, 1, 1, 0], [2, 4, 1, 1, 0]]
+    - num_res_layers: 3
+    - num_channels: [64, 128, 256, 512]
+    - num_res_channels: [64, 128, 256, 512]
+    - num_embeddings: 2048
+    - embedding_dim: 32
+    - embedding_init: normal
+    - commitment_cost: 0.25
+    - decay: 0.5
+    - epsilon: 1e-5
+    - dropout: 0
+    - act: RELU
+    - output_act: NULL
+    - ddp_sync: True
+    - use_checkpointing: False
+    discriminator:
+    - spatial_dims: 3
+    - num_layers_d: 4
+    - num_channels: 64
+    - in_channels: 1
+    - out_channels: 1
+    - kernel_size: 4
+    - activation:
+      - LEAKYRELU
+      - {"negative_slope": 0.2}
+    - norm: BATCH
+    - bias: False
+    - padding: 1
+  optimizer:
+    autoencoder:
+      _target_: torch.optim.Adam
+      _partial_: True
+      lr: 1e-4
+      betas: [0.9, 0.999]
+    discriminator:
+      _target_: torch.optim.Adam
+      _partial_: True
+      lr: 5e-5
+      betas: [0.9, 0.999]

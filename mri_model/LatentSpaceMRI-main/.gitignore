@@ -1,0 +1,8 @@
+__pycache__
+logs/*
+train.sh
+.DS_STORE
+latent_mri.egg-info
+results/*
+typesafe-ui/.env
+typesafe-ui/.venv/

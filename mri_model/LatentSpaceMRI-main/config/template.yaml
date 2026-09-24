@@ -1,0 +1,127 @@
+
+hydra:
+  run:
+    dir: logs/hydra/run_${job_id}_${run_id}
+
+lightning_logger:
+  _target_: lightning.pytorch.loggers.WandbLogger
+  project: unimodal3D
+  save_dir: logs/
+  log_model: False
+  id: run_${run_id}
+
+lightning_seed:
+  _target_: lightning.pytorch.seed_everything
+  seed: 1234
+  workers: True
+
+trainer:
+  _target_: lightning.pytorch.Trainer
+  max_epochs: 1000
+  deterministic: False
+  num_nodes: 1
+  devices: 1
+  accelerator: auto
+  strategy: ddp
+  accumulate_grad_batches: 1
+  precision: 16-mixed
+  profiler: simple
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: valid_loss
+      min_delta: 1e-3
+      patience: 100
+      mode: min
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      monitor: valid_loss
+      dirpath: logs/models
+      filename: best_model_${run_id}
+    - _target_: lightning.pytorch.callbacks.LearningRateMonitor
+      logging_interval: epoch
+    - _target_: unimodal_ae.wandb.callbacks3D.LogReconstructedInputs
+      num_images: 8
+      num_epochs: 10
+      use_sigmoid: False
+    - _target_: unimodal_ae.wandb.callbacks3D.LogDatasetSplits
+      num_images: 8
+    - _target_: unimodal_ae.wandb.callbacks3D.LogDatasetInformation
+
+
+dataset:
+  seed: 1234
+  ratio: [0.9, 0.05, 0.05]
+  data:
+    _target_: unimodal_ae.data.datasets.MRIDataset
+    _partial_: True
+    path: /home/galella/Documents/data/IXI/derivatives/datasets/anat/3D/T1.h5
+  transforms:
+    train:
+      _target_: torchvision.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+    valid:
+      _target_: torchvision.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+    test:
+      _target_: torchvision.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+      
+   
+datamodule:
+  _target_: unimodal_ae.data.datamodules.MRIDataModule
+  params:
+    train:
+      batch_size: 32
+      num_workers: 2
+      pin_memory: True
+    valid:
+      batch_size: 29
+      num_workers: 2
+      pin_memory: True
+    test:
+      batch_size: 29
+      num_workers: 2
+      pin_memory: True
+
+
+model:
+  _target_: unimodal_ae.models.vqvae.VQVAE
+  params:
+    - spatial_dims: 3
+    - in_channels: 1
+    - out_channels: 1
+    - downsample_parameters: [[2, 4, 1, 1], [2, 4, 1, 1], [2, 4, 1, 1], [2, 4, 1, 1], [2, 4, 1, 1]]
+    - upsample_parameters: [[2, 4, 1, 1, 0], [2, 4, 1, 1, 0], [2, 4, 1, 1, 0], [2, 4, 1, 1, 0], [2, 4, 1, 1, 0]]
+    - num_res_layers: 3
+    - num_channels: [32, 64, 128, 256, 512]
+    - num_res_channels: [32, 64, 128, 256, 512]
+    - num_embeddings: 2048
+    - embedding_dim: 32
+    - embedding_init: normal
+    - commitment_cost: 0.25
+    - decay: 0.5
+    - epsilon: 1e-5
+    - dropout: 0
+    - act: RELU
+    - output_act: Null
+    - ddp_sync: True
+    - use_checkpointing: False
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: True
+    lr: 1e-5
+    betas: [0.9, 0.999]
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+    _partial_: True
+    factor: 0.1
+    patience: 50
+  

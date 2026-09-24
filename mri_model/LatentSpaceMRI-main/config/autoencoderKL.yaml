@@ -1,0 +1,177 @@
+
+hydra:
+  run:
+    dir: logs/hydra/run_${job_id}_${run_id}
+
+lightning_logger:
+  _target_: lightning.pytorch.loggers.WandbLogger
+  project: LatentMRI
+  save_dir: logs/
+  log_model: False
+  id: run_${run_id}
+
+lightning_seed:
+  _target_: lightning.pytorch.seed_everything
+  seed: 1234
+  workers: True
+
+trainer:
+  _target_: lightning.pytorch.Trainer
+  max_epochs: 500
+  deterministic: False
+  num_nodes: 1
+  devices: 2
+  accelerator: auto
+  strategy: ddp_find_unused_parameters_true
+  accumulate_grad_batches: 1
+  precision: 16-mixed
+  profiler: simple
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: valid_loss
+      min_delta: 1e-3
+      patience: 2000
+      mode: min
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      monitor: valid_loss
+      dirpath: logs/models
+      filename: best_model_${run_id}
+    - _target_: latent_mri.wandb.callbacks3D.LogReconstructedInputs
+      num_images: 8
+      num_epochs: 50
+      use_sigmoid: False
+    - _target_: latent_mri.wandb.callbacks3D.LogDatasetSplits
+      num_images: 8
+    - _target_: latent_mri.wandb.callbacks3D.LogDatasetInformation
+    - _target_: latent_mri.wandb.callbacks3D.LogMetrics
+      num_epochs: 50
+      metrics:
+        - _target_: latent_mri.metrics.FID
+        - _target_: latent_mri.metrics.SSIM
+          spatial_dims: 3
+        - _target_: latent_mri.metrics.MSSSIM
+          spatial_dims: 3
+          kernel_size: 10
+        - _target_: latent_mri.metrics.MMD
+        - _target_: latent_mri.metrics.MAE
+        - _target_: latent_mri.metrics.MSE
+        - _target_: latent_mri.metrics.PSNR
+          max_val: 1
+
+
+dataset:
+  seed: 1234
+  ratio: [0.9, 0.05, 0.05]
+  logdir: logs/data
+  data:
+    _target_: latent_mri.data.datasets.MRIDataset
+    _partial_: True
+    root: /scratch/dldevel/galella/IXI/derivatives/mri_crop
+    mode: PD
+  transforms:
+    train:
+      _target_: monai.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+        - _target_: monai.transforms.RandAffine
+          rotate_range: 0.04
+          scale_range: 0.05 
+          translate_range: 2
+          prob: 0.1
+        - _target_: monai.transforms.RandAdjustContrast
+          gamma: [0.99, 1.01]
+          prob: 0.1
+        - _target_: monai.transforms.RandShiftIntensity
+          offsets: [0, 0.05]
+          prob: 0.1
+        - _target_: monai.transforms.RandGaussianNoise
+          mean: 0.0
+          std: 0.02
+          prob: 0.1
+        - _target_: monai.transforms.ThresholdIntensity
+          threshold: 1.0
+          above: False
+          cval: 1.0
+        - _target_: monai.transforms.ThresholdIntensity
+          threshold: 0.0
+          above: True
+          cval: 0.0           
+    valid:
+      _target_: monai.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+    test:
+      _target_: monai.transforms.Compose
+      transforms:
+        - _target_: monai.transforms.intensity.array.ScaleIntensity
+          minv: 0.0
+          maxv: 1.0
+
+datamodule:
+  _target_: latent_mri.data.datamodules.MRIDataModule
+  params:
+    train:
+      batch_size: 4
+      num_workers: 4
+      persistent_workers: False
+      pin_memory: False
+      shuffle: True
+    valid:
+      batch_size: 4
+      num_workers: 4
+      persistent_workers: False
+      pin_memory: False
+      shuffle: False
+    test:
+      batch_size: 4
+      num_workers: 4
+      persistent_workers: False
+      pin_memory: False
+      shuffle: False
+
+model:
+  _target_: latent_mri.models.autoencoderKL.AutoencoderKL
+  params:
+    autoencoder:
+    - spatial_dims: 3
+    - in_channels: 1
+    - out_channels: 1
+    - num_channels: [64, 64, 128, 128]
+    - latent_channels: 3
+    - num_res_blocks: [1, 1, 1, 1]
+    - attention_levels: [False, False, False, False]
+    - with_encoder_nonlocal_attn: False
+    - with_decoder_nonlocal_attn: False
+    - use_checkpointing: True
+    discriminator:
+    - spatial_dims: 3
+    - num_layers_d: 3
+    - num_channels: 64
+    - in_channels: 1
+    - out_channels: 1
+    - kernel_size: 4
+    - activation:
+      - LEAKYRELU
+      - {"negative_slope": 0.2}
+    - norm: BATCH
+    - bias: False
+    - padding: 1
+    loss:
+    - adv_weight: 0.005
+    - perceptual_weight: 0.002
+    - kl_weight: 0.00000001
+  optimizer:
+    autoencoder:
+      _target_: torch.optim.Adam
+      _partial_: True
+      lr: 0.00005
+      betas: [0.9, 0.999]
+    discriminator:
+      _target_: torch.optim.Adam
+      _partial_: True
+      lr: 0.0001
+  
